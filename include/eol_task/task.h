@@ -2,6 +2,7 @@
 #define EOL_TASK_TASK_H
 
 #include <cstddef> // size_t
+#include <tuple>   // tuple
 #include <utility> // aligned storage
 
 #ifndef EOL_TASK_STORAGE_SIZE
@@ -38,6 +39,33 @@ class task
 	void call();
 
   private:
+	struct callable_base
+	{
+		virtual void call()					   = 0;
+		virtual ~callable_base()			   = default;
+		virtual callable_base* copy(void* dst) = 0;
+		virtual callable_base* move(void* dst) = 0;
+	};
+	template <class F, class... Args>
+	struct callable : public callable_base
+	{
+		callable(F&& f, Args&&... args);
+		callable(const callable&) = default;
+		callable(callable&&)	  = default;
+		~callable()				  = default;
+		void call() final override;
+		callable_base* copy(void* dst) final override;
+		callable_base* move(void* dst) final override;
+
+		F function;
+		std::tuple<Args...> arguments;
+	};
+
+  private:
+	storage_type _storage;
+
+	callable_base* get_callable();
+	callable_base const* get_callable() const;
 };
 } // namespace eol
 #endif // !EOL_TASK_TASK_H
