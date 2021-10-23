@@ -15,14 +15,14 @@ set(CXX_STANDARD_REQUIRED ON)
 add_library(eol_task INTERFACE )
 add_library(eol::task ALIAS eol_task)
 
-target_include_directories(eol_task INTERFACE include)
+target_include_directories(eol_task INTERFACE include/)
 
-option(eol_task_TEST "build tests" ON)
+option(eol_task_TEST "build tests" TRUE)
 
 if(eol_task_TEST)
     add_executable(eol_task_test test/test.cpp)
     target_link_libraries(
         eol_task_test 
-        INTERFACE eol::task
+        PUBLIC eol::task
     )
 endif()
