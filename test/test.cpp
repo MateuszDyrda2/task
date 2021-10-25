@@ -5,12 +5,14 @@
 using namespace eol;
 int main()
 {
-	task t[] = {[]
-				{ std::cout << "1\n"; },
-				[]
-				{ std::cout << "2\n"; },
-				[]
-				{ std::cout << "3\n"; },
+	task t[] = {{[](int i)
+				 { std::cout << i << '\n'; },
+				 1},
+				{[]()
+				 { std::cout << "2\n"; }},
+				{[](int i)
+				 { std::cout << i << '\n'; },
+				 3},
 				[]
 				{ std::cout << "4\n"; },
 				[]

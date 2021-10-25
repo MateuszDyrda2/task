@@ -1,3 +1,8 @@
+/** 
+ * @file task.h
+ * @brief Fixed size storaga class for abstracting the call to a function
+ * @author Mateusz Dyrda
+*/
 #ifndef EOL_TASK_TASK_H
 #define EOL_TASK_TASK_H
 
@@ -18,6 +23,10 @@
 #endif // !EOL_DISABLE_EXCEPTIONS
 
 namespace eol {
+/** Task is a type allowing for representing a function
+ * that doesn't return anything that uses type erasure to
+ * allow for storing functions with different signatures in containers
+*/
 class task
 {
 	struct callable_base;
@@ -31,6 +40,11 @@ class task
 												EOL_TASK_STORAGE_ALIGN>;
 
   public:
+	/** @brief Constructs a task from a callable object.
+	 * The callable must be able to be called with the arguments specified
+	 * @param f callable to represent
+	 * @param args arguments to pass 
+	*/
 	template <class F, class... Args>
 	task(F&& f, Args&&... args)
 	{
@@ -38,14 +52,24 @@ class task
 			std::forward<std::decay_t<F>>(f),
 			std::forward<std::decay_t<Args>>(args)...);
 	}
+	/** @brief Copy constructs the task object
+	 * @param other task to be copied
+	*/
 	task(const self_type& other)
 	{
 		other.get_callable()->copy(&_storage);
 	}
+	/** @brief Move constructs the task object
+	 * @param other task to be moved
+	*/
 	task(self_type&& other) noexcept
 	{
 		other.get_callable()->move(&_storage);
 	}
+	/** @brief Copy assigns task
+	 * @param other task to be copied from
+	 * @return *this
+	*/
 	self_type& operator=(const self_type& other)
 	{
 		if (this != &other)
@@ -55,6 +79,10 @@ class task
 		}
 		return *this;
 	}
+	/** @brief Move assigns task
+	 * @param other task to be moved from
+	 * @return *this
+	*/
 	self_type& operator=(self_type&& other) noexcept
 	{
 		if (this != &other)
@@ -68,11 +96,16 @@ class task
 	{
 		get_callable()->~callable_base();
 	}
-
+	/** @brief Calls the associated callable object with 
+	 * arguments it was passed at creation
+	*/
 	inline void call()
 	{
 		get_callable()->call();
 	}
+	/** @brief Calls the associated callable object with 
+	 * arguments it was passed at creation
+	*/
 	inline void operator()()
 	{
 		return call();
