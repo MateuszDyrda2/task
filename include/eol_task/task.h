@@ -1,12 +1,15 @@
 /** 
+ * (c) 2021 Mateusz Dyrda
+ * This code is licensed under MIT license (see LICENSE.txt for details)
  * @file task.h
- * @brief Fixed size storaga class for abstracting the call to a function
+ * @brief Fixed size storage class for abstracting the call to a function
  * @author Mateusz Dyrda
 */
 #ifndef EOL_TASK_TASK_H
 #define EOL_TASK_TASK_H
 
 #include <cstddef> // size_t
+#include <functional>
 #include <tuple>   // tuple
 #include <utility> // aligned storage
 
@@ -17,10 +20,6 @@
 #ifndef EOL_TASK_STORAGE_ALIGN
 #	define EOL_TASK_STORAGE_ALIGN 16
 #endif // !EOL_TASK_STORAGE_ALIGN
-
-#ifndef EOL_DISABLE_EXCEPTIONS
-#	define EOL_DISABLE_EXCEPTIONS
-#endif // !EOL_DISABLE_EXCEPTIONS
 
 namespace eol {
 /** Task is a type allowing for representing a function
@@ -40,6 +39,11 @@ class task
 												EOL_TASK_STORAGE_ALIGN>;
 
   public:
+	/** @brief Default constructor. 
+	 * Task created with it don't actually represent
+	 * functions and should not be invoked
+	*/
+	task() = default;
 	/** @brief Constructs a task from a callable object.
 	 * The callable must be able to be called with the arguments specified
 	 * @param f callable to represent
@@ -74,7 +78,8 @@ class task
 	{
 		if (this != &other)
 		{
-			get_callable()->~callable_base();
+			if (initialized)
+				get_callable()->~callable_base();
 			other.get_callable()->copy(&_storage);
 		}
 		return *this;
@@ -87,14 +92,16 @@ class task
 	{
 		if (this != &other)
 		{
-			get_callable()->~callable_base();
+			if (initialized)
+				get_callable()->~callable_base();
 			other.get_callable()->move(&_storage);
 		}
 		return *this;
 	}
 	~task()
 	{
-		get_callable()->~callable_base();
+		if (initialized)
+			get_callable()->~callable_base();
 	}
 	/** @brief Calls the associated callable object with 
 	 * arguments it was passed at creation
@@ -150,6 +157,7 @@ class task
 
   private:
 	storage_type _storage;
+	bool initialized{false};
 
 	callable_base* get_callable()
 	{
