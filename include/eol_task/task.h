@@ -1,172 +1,174 @@
-/** 
- * (c) 2021 Mateusz Dyrda
- * This code is licensed under MIT license (see LICENSE.txt for details)
- * @file task.h
- * @brief Fixed size storage class for abstracting the call to a function
- * @author Mateusz Dyrda
-*/
 #ifndef EOL_TASK_TASK_H
 #define EOL_TASK_TASK_H
 
-#include <cstddef> // size_t
-#include <functional>
-#include <tuple>   // tuple
-#include <utility> // aligned storage
-
-#ifndef EOL_TASK_STORAGE_SIZE
-#	define EOL_TASK_STORAGE_SIZE 32
-#endif // !EOL_TASK_STORAGE_SIZE
-
-#ifndef EOL_TASK_STORAGE_ALIGN
-#	define EOL_TASK_STORAGE_ALIGN 16
-#endif // !EOL_TASK_STORAGE_ALIGN
+#include <utility>
 
 namespace eol {
-/** Task is a type allowing for representing a function
- * that doesn't return anything that uses type erasure to
- * allow for storing functions with different signatures in containers
+/** Task is the standard function implementation representing 
+ * a function wiout a return type and taking no arguments created 
+ * without dynamically allocating memory. It allows for specifying
+ * the size and alignment of the task. 
 */
+template <std::size_t Size = 32, std::size_t Align = 16>
 class task
 {
-	struct callable_base;
-	template <class F, class... Args>
-	struct callable;
+  private:
+	struct storage_t
+	{
+		inline void* get() noexcept { return &_storage; }
+		inline void const* get() const noexcept { return &_storage; }
+
+		template <class T>
+		inline T& get() noexcept { return *static_cast<T*>(get()); }
+		template <class T>
+		inline T const& get() const noexcept { return *static_cast<T const*>(get()); }
+
+		std::aligned_storage_t<Size, Align> _storage;
+	};
+
+	enum operation { clone_fn,
+					 destroy_fn };
+
+	template <class F>
+	struct manager_t
+	{
+		inline static F const& get_callable(storage_t const& src) noexcept
+		{
+			return src.get<F>();
+		}
+		template <class Fn>
+		static void create_fn(storage_t& dst, Fn&& fn)
+		{
+			::new (dst.get()) F(std::forward<Fn>(fn));
+		}
+		static void destroy_fn(storage_t& dst)
+		{
+			dst.get<F>().~F();
+		}
+		static void _invoke_(storage_t const& dst)
+		{
+			dst.get<F>();
+		}
+		static void _manage_(storage_t& dst, storage_t const& src, operation op)
+		{
+			switch (op)
+			{
+			case operation::clone_fn:
+				create_fn(dst, get_callable(src));
+				break;
+			case operation::destroy_fn:
+				destroy_fn(dst);
+				break;
+			default:
+				break;
+			}
+		}
+	};
+	using manager = void (*)(storage_t&, storage_t const&, operation);
+	using invoker = void (*)(storage_t const&);
 
   public:
-	using self_type	   = task;
-	using size_type	   = std::size_t;
-	using storage_type = std::aligned_storage_t<EOL_TASK_STORAGE_SIZE + 16,
-												EOL_TASK_STORAGE_ALIGN>;
-
-  public:
-	/** @brief Default constructor. 
-	 * Task created with it don't actually represent
-	 * functions and should not be invoked
+	/** @brief Constructs an empty task object, not representing 
+	 * any callable object.
 	*/
 	task() = default;
-	/** @brief Constructs a task from a callable object.
-	 * The callable must be able to be called with the arguments specified
-	 * @param f callable to represent
-	 * @param args arguments to pass 
+	/** @brief Constructs a task representing a callable object.
+	 * The return type must be void and it must be invokable without arguments
+	 * @param callable callable object to be represented by the task
 	*/
-	template <class F, class... Args>
-	task(F&& f, Args&&... args)
+	template <class F>
+	task(F&& callable)
 	{
-		::new (&_storage) callable(
-			std::forward<std::decay_t<F>>(f),
-			std::forward<std::decay_t<Args>>(args)...);
+		using handler = manager_t<F>;
+
+		handler::create_fn(_storage, std::forward<F>(callable));
+		_manager = &handler::_manage_;
+		_invoker = &handler::_invoke_;
 	}
-	/** @brief Copy constructs the task object
-	 * @param other task to be copied
+	/** @brief Copies the task stored in other
+	 * @param other task to be copied 
 	*/
-	task(const self_type& other)
+	task(task const& other)
 	{
-		other.get_callable()->copy(&_storage);
-	}
-	/** @brief Move constructs the task object
-	 * @param other task to be moved
-	*/
-	task(self_type&& other) noexcept
-	{
-		other.get_callable()->move(&_storage);
-	}
-	/** @brief Copy assigns task
-	 * @param other task to be copied from
-	 * @return *this
-	*/
-	self_type& operator=(const self_type& other)
-	{
-		if (this != &other)
+		if (other)
 		{
-			if (initialized)
-				get_callable()->~callable_base();
-			other.get_callable()->copy(&_storage);
+			other._manager(_storage, other._storage, clone_fn);
+			_manager = other._manager;
+			_invoker = other._invoker;
 		}
-		return *this;
 	}
-	/** @brief Move assigns task
-	 * @param other task to be moved from
-	 * @return *this
+	/** @brief Moves the task stored in other
+	 * @param other task to be moved 
 	*/
-	self_type& operator=(self_type&& other) noexcept
+	task(task&& other) noexcept
 	{
-		if (this != &other)
+		if (other)
 		{
-			if (initialized)
-				get_callable()->~callable_base();
-			other.get_callable()->move(&_storage);
+			_storage	   = other._storage;
+			_manager	   = other._manager;
+			_invoker	   = other._invoker;
+			other._manager = nullptr;
+			other._invoker = nullptr;
 		}
-		return *this;
 	}
 	~task()
 	{
-		if (initialized)
-			get_callable()->~callable_base();
+		_manager(_storage, _storage, operation::destroy_fn);
 	}
-	/** @brief Calls the associated callable object with 
-	 * arguments it was passed at creation
+	/** @brief Copy assigns the task 
+	 * @param other task to be copied
+	 * @return *this
 	*/
-	inline void call()
+	task& operator=(task const& other)
 	{
-		get_callable()->call();
+		if (this != &other)
+		{
+			task(other).swap(*this);
+		}
+		return *this;
 	}
-	/** @brief Calls the associated callable object with 
-	 * arguments it was passed at creation
+	/** @brief Move assigns the task
+	 * @param other task to be moved
+	 * @return *this
 	*/
-	inline void operator()()
+	task& operator=(task&& other) noexcept
 	{
-		return call();
+		if (this != &other)
+		{
+			task(std::move(other)).swap(*this);
+		}
+		return *this;
+	}
+	/** @brief Swaps states of two tasks
+	 * @param other task to be swaped with
+	*/
+	void swap(task& other)
+	{
+		std::swap(_storage, other._storage);
+		std::swap(_manager, other._manager);
+		std::swap(_invoker, other._invoker);
+	}
+	/** @brief Calls the stored callable object
+	*/
+	inline void operator()() const
+	{
+		_invoker(_storage);
+	}
+	/** @return true if the task represents a callable object 
+	*/
+	inline operator bool() const noexcept
+	{
+		return !!_manager;
 	}
 
   private:
-	struct callable_base
-	{
-		virtual void call()							 = 0;
-		virtual ~callable_base()					 = default;
-		virtual callable_base* copy(void* dst) const = 0;
-		virtual callable_base* move(void* dst)		 = 0;
-	};
-	template <class F, class... Args>
-	struct callable : public callable_base
-	{
-		callable(F&& f, Args&&... args)
-			: function(std::forward<F>(f)),
-			  arguments(std::forward_as_tuple(args...))
-		{
-		}
-		callable(const callable&) = default;
-		callable(callable&&)	  = default;
-		~callable()				  = default;
-		void call() final override
-		{
-			std::apply(std::forward<F>(function),
-					   std::forward<std::tuple<Args...>>(arguments));
-		}
-		callable_base* copy(void* dst) const final override
-		{
-			return ::new (dst) callable(*this);
-		}
-		callable_base* move(void* dst) final override
-		{
-			return ::new (dst) callable(std::move(*this));
-		}
-
-		F function;
-		std::tuple<Args...> arguments;
-	};
-
-  private:
-	storage_type _storage;
-	bool initialized{false};
-
-	callable_base* get_callable()
-	{
-		return (callable_base*)&_storage;
-	}
-	callable_base const* get_callable() const
-	{
-		return (const callable_base*)&_storage;
-	}
+	storage_t _storage;
+	manager _manager;
+	invoker _invoker;
 };
+/** Deduction guide for the task */
+template <class F>
+task(F&& callable) -> task<sizeof(F), alignof(F)>;
+
 } // namespace eol
 #endif // !EOL_TASK_TASK_H
