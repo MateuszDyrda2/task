@@ -64,8 +64,8 @@ class task
 			}
 		}
 	};
-	using manager = void (*)(storage_t&, storage_t const&, operation);
-	using invoker = void (*)(storage_t const&);
+	using manager_f = void (*)(storage_t&, storage_t const&, operation);
+	using invoker_f = void (*)(storage_t const&);
 
   public:
 	/** @brief Constructs an empty task object, not representing 
@@ -163,8 +163,8 @@ class task
 
   private:
 	storage_t _storage;
-	manager _manager;
-	invoker _invoker;
+	manager_f _manager;
+	invoker_f _invoker;
 };
 /** Deduction guide for the task */
 template <class F>
