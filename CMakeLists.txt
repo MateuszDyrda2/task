@@ -9,8 +9,9 @@ project(eol_task
     VERSION ${eol_task_VERSION}
     LANGUAGES CXX
 )
-set(CXX_STANDARD 11)
+set(CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 
 add_library(eol_task INTERFACE )
 add_library(eol::task ALIAS eol_task)

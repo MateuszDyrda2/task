@@ -2,6 +2,7 @@
 #define EOL_TASK_TASK_H
 
 #include <utility>
+#include <type_traits>
 
 namespace eol {
 /** Task is the standard function implementation representing 
@@ -78,6 +79,7 @@ class task
 	*/
 	template <class F>
 	task(F&& callable)
+	requires std::is_invocable_v<F>
 	{
 		using handler = manager_t<F>;
 
