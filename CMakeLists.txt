@@ -18,7 +18,7 @@ add_library(eol::task ALIAS eol_task)
 
 target_include_directories(eol_task INTERFACE include/)
 
-option(eol_task_TEST "build tests" TRUE)
+option(eol_task_TEST "build tests" FALSE)
 
 if(eol_task_TEST)
     add_executable(eol_task_test test/test.cpp)
