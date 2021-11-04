@@ -18,7 +18,11 @@ void f(int w, int* e, int* r)
 using namespace eol;
 int main()
 {
-	using namespace std::chrono;
+	task t([]()
+		   { std::cout << "works\n"; });
+	t();
+
+	/* 	using namespace std::chrono;
 
 	std::vector<task<20, 8>> tasks3;
 	std::vector<std::function<void()>> functions;
@@ -62,5 +66,6 @@ int main()
 	std::cout << "function:" << std::right << '\t' << diff2.count() << '\n';
 	std::cout << "normal:\t\t" << std::right << diff3.count() << '\n';
 
+*/
 	return 0;
 }

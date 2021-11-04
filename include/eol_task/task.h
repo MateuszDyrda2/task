@@ -48,7 +48,7 @@ class task
 		}
 		static void _invoke_(storage_t const& dst)
 		{
-			dst.get<F>();
+			dst.get<F>()();
 		}
 		static void _manage_(storage_t& dst, storage_t const& src, operation op)
 		{
