@@ -78,7 +78,7 @@ class task
 	 * @param callable callable object to be represented by the task
 	*/
 	template <class F>
-	task(F&& callable) requires(std::is_invocable_v<F> && !std::is_same_v<task, F>)
+	task(F&& callable) requires(std::is_invocable_v<F> && !std::is_same_v<task, std::decay_t<F>>)
 	{
 		using handler = manager_t<std::decay_t<F>>;
 
