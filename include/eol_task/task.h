@@ -81,9 +81,9 @@ class task
 	task(F&& callable)
 	requires std::is_invocable_v<F>
 	{
-		using handler = manager_t<F>;
+		using handler = manager_t<std::decay_t<F>>;
 
-		handler::create_fn(_storage, std::forward<F>(callable));
+		handler::create_fn(_storage, std::forward<std::decay_t<F>>(callable));
 		_manager = &handler::_manage_;
 		_invoker = &handler::_invoke_;
 	}
