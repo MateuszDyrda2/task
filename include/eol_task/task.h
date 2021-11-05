@@ -1,8 +1,8 @@
 #ifndef EOL_TASK_TASK_H
 #define EOL_TASK_TASK_H
 
-#include <utility>
 #include <type_traits>
+#include <utility>
 
 namespace eol {
 /** Task is the standard function implementation representing 
@@ -74,12 +74,11 @@ class task
 	*/
 	task() = default;
 	/** @brief Constructs a task representing a callable object.
-	 * The return type must be void and it must be invokable without arguments
+	 * The return type must be void and it must be invocable without arguments
 	 * @param callable callable object to be represented by the task
 	*/
 	template <class F>
-	task(F&& callable)
-	requires std::is_invocable_v<F>
+	task(F&& callable) requires(std::is_invocable_v<F> && !std::is_same_v<task, F>)
 	{
 		using handler = manager_t<std::decay_t<F>>;
 
