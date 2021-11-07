@@ -132,7 +132,8 @@ class task
 	}
 	~task()
 	{
-		_manager(_storage, _storage, task_detail::operation::destroy_fn);
+		if (_manager)
+			_manager(_storage, _storage, task_detail::operation::destroy_fn);
 	}
 	/** @brief Copy assigns the task 
 	 * @param other task to be copied
