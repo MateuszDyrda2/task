@@ -183,8 +183,8 @@ class task
 
   private:
 	storage_t _storage;
-	manager_f _manager;
-	invoker_f _invoker;
+	manager_f _manager{};
+	invoker_f _invoker{};
 };
 /** Deduction guide for the task */
 template <class F>
