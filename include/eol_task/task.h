@@ -97,7 +97,7 @@ class task
 	template <class F>
 	task(F&& callable) requires(std::is_invocable_v<F> && !std::is_same_v<task, std::decay_t<F>>)
 	{
-		using _Fn	  = std::decay_t<F>;
+		using _Fn		= std::decay_t<F>;
 		using handler_t = task_detail::handler<_Fn, Size>;
 
 		handler_t::create_fn(_storage, std::forward<_Fn>(callable));
